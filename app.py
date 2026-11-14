@@ -1,59 +1,117 @@
+import json
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
-import datetime
 
 # Page Configuration
-st.set_page_config(page_title="Smart Step Tracker & AI Motivator",
+st.set_page_config(page_title="Smart Step Tracker",
                    page_icon="👟", layout="centered")
 
-st.title("👟 Smart Step Tracker & AI Motivator")
-st.write("Taleefankaaga jeebka geli ama gacanta ku hay — **tallaabo kasta si otomaatig ah ayay u kordhaysaa!**")
+# --- 1. LANGUAGE TRANSLATIONS DICTIONARY ---
+translations = {
+    "Soomaali": {
+        "title": "👟 Smart Step Tracker & AI Motivator",
+        "subtitle": "Taleefankaaga jeebka geli ama gacanta ku hay — **tallaabo kasta si otomaatig ah ayay u kordhaysaa!**",
+        "settings": "⚙️ Dejinta & Luqadda",
+        "lang_label": "Dooro Luqadda / Select Language:",
+        "day_label": "Dooro Maanta waa Maalin Kee:",
+        "goal_label": "Hadaafka Maalinlaha ah:",
+        "start_btn": "▶️ Bilow (Start)",
+        "stop_btn": "🛑 Jooji (Stop)",
+        "today_steps": "Tallaabooyinka Maanta",
+        "timer_text": "⏱️ Wakhtiga Socodka:",
+        "analytics_title": "📊 Xogta Isbuuceeda (Weekly Analytics)",
+        "analytics_desc": "Halkan ka daawo maalmaha aad socodka ugu badnayd iyo maalmaha aad yaraysay:",
+        "insights": "💡 **AI Insights:** Maalinta aad **ugu badanayd** socodka waxay ahayd **{max_day}**, halka maalinta aad **ugu yarayd** ay ahayd **{min_day}**. Joogteey dadaalkaaga!",
+        "notes_title": "📝 Qoraallada & Dareenka Maanta",
+        "note_input": "Tusaale: Maanta waxaan lugeeyay xilli hore...",
+        "save_btn": "Kaydi Qoraalka",
+        "saved_msg": "Waa la kaydiyay!",
+        "days": ["Isniin", "Talaado", "Arbaco", "Khamiis", "Jimco", "Sabti", "Axad"],
+        "quotes": [
+            "🌟 Guushu waxay ku timaadaa tallaabooyin joogto ah. Horay u soco!",
+            "💪 Jir caafimaad qaba wuxuu ku jiraa lugeyn joogto ah. Aad bay kuu taraysaa!",
+            "🔥 1,000 tallaabo ayaa dhabarkaaga ka baxay! Joogso ma jiro!",
+            "🚀 Waxaad tahay qof hami leh! Hadaafkii waa uu sii dhowaanayaa.",
+            "🎯 Nolosha waa l sakin — tallaabo kasta waa guul cusub!"
+        ]
+    },
+    "English": {
+        "title": "👟 Smart Step Tracker & AI Motivator",
+        "subtitle": "Keep your phone in your pocket or hand — **every step counts automatically!**",
+        "settings": "⚙️ Settings & Language",
+        "lang_label": "Select Language:",
+        "day_label": "Select Today's Day:",
+        "goal_label": "Daily Step Goal:",
+        "start_btn": "▶️ Start",
+        "stop_btn": "🛑 Stop",
+        "today_steps": "Today's Steps",
+        "timer_text": "⏱️ Walking Time:",
+        "analytics_title": "📊 Weekly Analytics",
+        "analytics_desc": "Check your most active days and low-activity days this week:",
+        "insights": "💡 **AI Insights:** Your **most active** day was **{max_day}**, and your **lowest** day was **{min_day}**. Keep up the great work!",
+        "notes_title": "📝 Daily Notes & Mood",
+        "note_input": "Example: Walked early in the morning today...",
+        "save_btn": "Save Note",
+        "saved_msg": "Successfully saved!",
+        "days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+        "quotes": [
+            "🌟 Success comes from consistent steps. Keep moving forward!",
+            "💪 A healthy body relies on regular walking. Great job!",
+            "🔥 1,000 steps unlocked! There's no stopping you!",
+            "🚀 You are ambitious! Your daily goal is getting closer.",
+            "🎯 Every single step is a new victory!"
+        ]
+    }
+}
 
-# --- 1. SESSION STATE INITIALIZATION ---
+# --- 2. SIDEBAR LANGUAGE & SETTINGS ---
+st.sidebar.header("⚙️ Settings")
+lang_choice = st.sidebar.selectbox(
+    "Language / Luqad:", ["Soomaali", "English"])
+t = translations[lang_choice]  # Qaado erayada luqadda la doortay
+
+st.sidebar.markdown("---")
+selected_day = st.sidebar.selectbox(t["day_label"], t["days"])
+daily_goal = st.sidebar.number_input(t["goal_label"], value=1000, step=500)
+
+# --- 3. MAIN INTERFACE ---
+st.title(t["title"])
+st.markdown(t["subtitle"])
+
+# Session state for weekly data and notes
 if "weekly_data" not in st.session_state:
-    # Keydinta xogta isbuuca (Tusaale ahaan maalmaha isbuuca iyo tallaabooyinkoodii)
     st.session_state.weekly_data = {
-        "Isniin": 1200,
-        "Talaado": 3400,
-        "Arbaco": 800,
-        "Khamiis": 4500,
-        "Jimco": 2100,
-        "Sabti": 5000,
-        "Axad": 1500
+        t["days"][0]: 1200, t["days"][1]: 3400, t["days"][2]: 800,
+        t["days"][3]: 4500, t["days"][4]: 2100, t["days"][5]: 5000, t["days"][6]: 1500
     }
 
 if "notes" not in st.session_state:
     st.session_state.notes = []
 
-# Sidebar for Settings & Weekly Overview
-st.sidebar.header("⚙️ Dejinta Isbuuca")
-selected_day = st.sidebar.selectbox("Dooro Maanta waa Maalin Kee:", [
-                                    "Isniin", "Talaado", "Arbaco", "Khamiis", "Jimco", "Sabti", "Axad"])
-daily_goal = st.sidebar.number_input(
-    "Hadaafka Maalinlaha ah:", value=1000, step=500)
+# --- 4. HTML + JS SENSOR COMPONENT ---
+# Waxaan JavaScript u gudbineynaa hadalada dhiirrigelinta ee luqadda la doortay
+quotes_js = json.dumps(t["quotes"])
 
-# --- 2. HTML + JS SENSOR COMPONENT WITH DYNAMIC MOTIVATION ---
 sensor_code = f"""
 <div style="font-family: sans-serif; text-align: center; padding: 25px; border: 2px solid #4CAF50; border-radius: 20px; background: linear-gradient(135deg, #ffffff 0%, #f1f8e9 100%); box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-    <h3 style="color: #2e7d32; margin-top: 0;">Tallaabooyinka Maanta ({selected_day})</h3>
+    <h3 style="color: #2e7d32; margin-top: 0;">{t["today_steps"]} ({selected_day})</h3>
     <div id="stepCount" style="font-size: 72px; font-weight: 800; color: #2e7d32; line-height: 1;">0</div>
     
     <div style="font-size: 18px; color: #555; margin: 15px 0;">
-        ⏱️ Wakhtiga Socodka: <span id="timer" style="font-weight: bold; color: #333;">00:00</span>
+        {t["timer_text"]} <span id="timer" style="font-weight: bold; color: #333;">00:00</span>
     </div>
 
-    <!-- AI Motivational Box oo soo boodaya mar kasta oo 1000 la gaaro -->
     <div id="motivationBox" style="display: none; background-color: #e8f5e9; color: #1b5e20; padding: 15px; border-radius: 12px; font-weight: bold; margin: 15px 0; border: 1px solid #4CAF50; font-size: 16px;">
-        🤖 <span id="motivationText">Hambalyo! Waa tallaabo weyn!</span>
+        🤖 <span id="motivationText">Hambalyo!</span>
     </div>
 
     <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
         <button onclick="startTracking()" style="background-color: #4CAF50; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 10px; cursor: pointer; flex: 1;">
-            ▶️ Bilow (Start)
+            {t["start_btn"]}
         </button>
         <button onclick="stopTracking()" style="background-color: #e53935; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 10px; cursor: pointer; flex: 1;">
-            🛑 Jooji (Stop)
+            {t["stop_btn"]}
         </button>
     </div>
 </div>
@@ -65,15 +123,7 @@ let timerInterval = null;
 let isTracking = false;
 let lastStepTime = 0;
 let lastMilestone = 0;
-
-// Hadalada Dhiirrigelinta ah ee AI-ga
-const quotes = [
-    "🌟 Guushu waxay ku timaadaa tallaabooyin joogto ah. Horay u soco!",
-    "💪 Jir caafimaad qaba wuxuu ku jiraa lugeyn joogto ah. Aad bay kuu taraysaa!",
-    "🔥 1,000 tallaabo ayaa dhabarkaaga ka baxay! Joogso ma jiro!",
-    "🚀 Waxaad tahay qof hami leh! Hadaafkii waa uu sii dhowaanayaa.",
-    "🎯 Nolosha waa l sakin — tallaabo kasta waa guul cusub!"
-];
+const quotes = {quotes_js};
 
 function playAlarmSound() {{
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -120,12 +170,11 @@ function detectStep(event) {{
         lastStepTime = now;
         document.getElementById("stepCount").innerText = steps;
 
-        // Hubi markasta oo 1,000 tallaabo la dhaafo
         let currentMilestone = Math.floor(steps / 1000);
         if (currentMilestone > lastMilestone) {{
             lastMilestone = currentMilestone;
             let randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
-            document.getElementById("motivationText").innerText = "Milestone (" + (currentMilestone * 1000) + " steps): " + randomQuote;
+            document.getElementById("motivationText").innerText = "Milestone (" + (currentMilestone * 1000) + "): " + randomQuote;
             document.getElementById("motivationBox").style.display = "block";
             playAlarmSound();
         }}
@@ -142,34 +191,31 @@ function stopTracking() {{
 
 components.html(sensor_code, height=400)
 
-# --- 3. WEEKLY ANALYTICS & CHARTS SECTION ---
+# --- 5. WEEKLY ANALYTICS & CHARTS ---
 st.markdown("---")
-st.subheader("📊 Xogta Isbuuceeda (Weekly Analytics)")
-st.write("Halkan ka daawo maalmaha aad socodka ugu badnayd iyo maalmaha aad yaraysay:")
+st.subheader(t["analytics_title"])
+st.write(t["analytics_desc"])
 
-# Beddelista xogta isbuuca si Streamlit u sawiro Bar Chart
-df_steps = pd.DataFrame(list(st.session_state.weekly_data.items()), columns=[
+# Keydinta xogta isbuuca ee hadda jirta
+current_weekly_dict = st.session_state.weekly_data
+df_steps = pd.DataFrame(list(current_weekly_dict.items()), columns=[
                         "Maalinta", "Tallaabooyinka"])
 df_steps.set_index("Maalinta", inplace=True)
 
-# Muujinta Bar Chart-ka xogta isbuuca
 st.bar_chart(df_steps, color="#4CAF50")
 
-# Falanqeyn yar oo AI ah oo ku saabsan isbuuca
 max_day = df_steps["Tallaabooyinka"].idxmax()
 min_day = df_steps["Tallaabooyinka"].idxmin()
 
-st.info(
-    f"💡 **AI Insights:** Maalinta aad **ugu badanayd** socodka waxay ahayd **{max_day}**, halka maalinta aad **ugu yarayd** ay ahayd **{min_day}**. Joogteey dadaalkaaga!")
+st.info(t["insights"].format(max_day=max_day, min_day=min_day))
 
-# --- 4. DAILY NOTES SECTION ---
+# --- 6. DAILY NOTES SECTION ---
 st.markdown("---")
-st.subheader("📝 Qoraallada & Dareenka Maanta")
-note_input = st.text_input(
-    "Tusaale: Maanta waxaan lugeeyay xilli hore oo subax ah...")
-if st.button("Kaydi Qoraalka") and note_input:
+st.subheader(t["notes_title"])
+note_input = st.text_input(t["note_input"])
+if st.button(t["save_btn"]) and note_input:
     st.session_state.notes.append(note_input)
-    st.success("Waa la kaydiyay!")
+    st.success(t["saved_msg"])
 
 if st.session_state.notes:
     for idx, n in enumerate(st.session_state.notes, 1):
