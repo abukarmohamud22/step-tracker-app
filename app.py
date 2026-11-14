@@ -1,26 +1,30 @@
-import json
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
+import json
 
-# Page Configuration
-st.set_page_config(page_title="Smart Step Tracker",
-                   page_icon="👟", layout="centered")
+# Page Configuration & Hiding Branding via layout/config properties
+st.set_page_config(
+    page_title="Smart Step Tracker",
+    page_icon="👟",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 
 # --- 1. LANGUAGE TRANSLATIONS DICTIONARY ---
 translations = {
     "Soomaali": {
         "title": "👟 Smart Step Tracker & AI Motivator",
         "subtitle": "Taleefankaaga jeebka geli ama gacanta ku hay — **tallaabo kasta si otomaatig ah ayay u kordhaysaa!**",
-        "settings": "⚙️ Dejinta & Luqadda",
-        "lang_label": "Dooro Luqadda / Select Language:",
-        "day_label": "Dooro Maanta waa Maalin Kee:",
-        "goal_label": "Hadaafka Maalinlaha ah:",
+        "sidebar_header": "⚙️ Dejinta App-ka",
+        "lang_label": "Dooro Luqadda / Language:",
+        "day_label": "Maanta waa Maalin Kee:",
+        "goal_label": "Hadaafka Maalinlaha ah (Goal):",
         "start_btn": "▶️ Bilow (Start)",
         "stop_btn": "🛑 Jooji (Stop)",
         "today_steps": "Tallaabooyinka Maanta",
         "timer_text": "⏱️ Wakhtiga Socodka:",
-        "analytics_title": "📊 Xogta Isbuuceeda (Weekly Analytics)",
+        "analytics_box": "📊 Xogta Isbuuceeda (Weekly Analytics)",
         "analytics_desc": "Halkan ka daawo maalmaha aad socodka ugu badnayd iyo maalmaha aad yaraysay:",
         "insights": "💡 **AI Insights:** Maalinta aad **ugu badanayd** socodka waxay ahayd **{max_day}**, halka maalinta aad **ugu yarayd** ay ahayd **{min_day}**. Joogteey dadaalkaaga!",
         "notes_title": "📝 Qoraallada & Dareenka Maanta",
@@ -39,7 +43,7 @@ translations = {
     "English": {
         "title": "👟 Smart Step Tracker & AI Motivator",
         "subtitle": "Keep your phone in your pocket or hand — **every step counts automatically!**",
-        "settings": "⚙️ Settings & Language",
+        "sidebar_header": "⚙️ App Settings",
         "lang_label": "Select Language:",
         "day_label": "Select Today's Day:",
         "goal_label": "Daily Step Goal:",
@@ -47,7 +51,7 @@ translations = {
         "stop_btn": "🛑 Stop",
         "today_steps": "Today's Steps",
         "timer_text": "⏱️ Walking Time:",
-        "analytics_title": "📊 Weekly Analytics",
+        "analytics_box": "📊 Weekly Analytics",
         "analytics_desc": "Check your most active days and low-activity days this week:",
         "insights": "💡 **AI Insights:** Your **most active** day was **{max_day}**, and your **lowest** day was **{min_day}**. Keep up the great work!",
         "notes_title": "📝 Daily Notes & Mood",
@@ -65,13 +69,14 @@ translations = {
     }
 }
 
-# --- 2. SIDEBAR LANGUAGE & SETTINGS ---
-st.sidebar.header("⚙️ Settings")
+# --- 2. SIDEBAR CONFIGURATION ---
+st.sidebar.header("⚙️ Menu")
 lang_choice = st.sidebar.selectbox(
     "Language / Luqad:", ["Soomaali", "English"])
-t = translations[lang_choice]  # Qaado erayada luqadda la doortay
+t = translations[lang_choice]
 
 st.sidebar.markdown("---")
+st.sidebar.subheader(t["sidebar_header"])
 selected_day = st.sidebar.selectbox(t["day_label"], t["days"])
 daily_goal = st.sidebar.number_input(t["goal_label"], value=1000, step=500)
 
@@ -79,7 +84,7 @@ daily_goal = st.sidebar.number_input(t["goal_label"], value=1000, step=500)
 st.title(t["title"])
 st.markdown(t["subtitle"])
 
-# Session state for weekly data and notes
+# Session state initialization
 if "weekly_data" not in st.session_state:
     st.session_state.weekly_data = {
         t["days"][0]: 1200, t["days"][1]: 3400, t["days"][2]: 800,
@@ -90,7 +95,6 @@ if "notes" not in st.session_state:
     st.session_state.notes = []
 
 # --- 4. HTML + JS SENSOR COMPONENT ---
-# Waxaan JavaScript u gudbineynaa hadalada dhiirrigelinta ee luqadda la doortay
 quotes_js = json.dumps(t["quotes"])
 
 sensor_code = f"""
@@ -191,23 +195,22 @@ function stopTracking() {{
 
 components.html(sensor_code, height=400)
 
-# --- 5. WEEKLY ANALYTICS & CHARTS ---
+# --- 5. WEEKLY ANALYTICS EXPANDER BOX ---
 st.markdown("---")
-st.subheader(t["analytics_title"])
-st.write(t["analytics_desc"])
+with st.expander(t["analytics_box"], expanded=False):
+    st.write(t["analytics_desc"])
 
-# Keydinta xogta isbuuca ee hadda jirta
-current_weekly_dict = st.session_state.weekly_data
-df_steps = pd.DataFrame(list(current_weekly_dict.items()), columns=[
-                        "Maalinta", "Tallaabooyinka"])
-df_steps.set_index("Maalinta", inplace=True)
+    current_weekly_dict = st.session_state.weekly_data
+    df_steps = pd.DataFrame(list(current_weekly_dict.items()), columns=[
+                            "Maalinta", "Tallaabooyinka"])
+    df_steps.set_index("Maalinta", inplace=True)
 
-st.bar_chart(df_steps, color="#4CAF50")
+    st.bar_chart(df_steps, color="#4CAF50")
 
-max_day = df_steps["Tallaabooyinka"].idxmax()
-min_day = df_steps["Tallaabooyinka"].idxmin()
+    max_day = df_steps["Tallaabooyinka"].idxmax()
+    min_day = df_steps["Tallaabooyinka"].idxmin()
 
-st.info(t["insights"].format(max_day=max_day, min_day=min_day))
+    st.info(t["insights"].format(max_day=max_day, min_day=min_day))
 
 # --- 6. DAILY NOTES SECTION ---
 st.markdown("---")
